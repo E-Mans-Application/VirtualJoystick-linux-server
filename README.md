@@ -1,0 +1,1 @@
+Virtual joystick simulator. Must be used with an external client, such as https://github.com/E-Mans-Application/EManVirtualJoystick-android-client
