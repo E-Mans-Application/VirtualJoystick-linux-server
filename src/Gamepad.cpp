@@ -9,8 +9,7 @@
 #include <string.h>       //strcpy
 #include <unistd.h>       //close, symlink
 
-#define SYMLINK_PATH                                                           \
-    "/dev/input/by-path/usb-EMan_Virtual_GamePad-event-joystick"
+#define SYMLINK_PATH "/dev/input/by-path/usb-EMan_Virtual_GamePad-event-joystick"
 #define REMOVE_SYMLINK try_opt(std::remove(SYMLINK_PATH), "remove symlink")
 
 VirtualGamePad::VirtualGamePad() {
@@ -56,8 +55,7 @@ VirtualGamePad::VirtualGamePad() {
 
     _event_file = parseEventFile();
     REMOVE_SYMLINK;
-    try_opt(symlink(("/dev/input/" + _event_file).c_str(), SYMLINK_PATH),
-            "create symlink");
+    try_opt(symlink(("/dev/input/" + _event_file).c_str(), SYMLINK_PATH), "create symlink");
 }
 
 VirtualGamePad::~VirtualGamePad() {
@@ -81,8 +79,7 @@ std::string VirtualGamePad::parseEventFile() const {
 
     while (std::getline(devices, line) && line != target)
         ;
-    while (std::getline(devices, line) &&
-           line.rfind("H: Handlers=", 0) == std::string::npos)
+    while (std::getline(devices, line) && line.rfind("H: Handlers=", 0) == std::string::npos)
         ;
 
     line = line.substr(12);

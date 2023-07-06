@@ -15,6 +15,9 @@ override SRC :=	\
 		src/IOException.cpp \
 		src/Command.cpp \
 		src/Gamepad.cpp \
+		src/GamepadDelegate.cpp \
+		src/RemoteGamepadSocket.cpp \
+		src/SockAddr.cpp \
 		src/Socket.cpp
 
 # the corresponding binary files

@@ -24,14 +24,14 @@ class Command {
     };
 
     CommandType type;
+    /// An arbitrary, unchecked integer value associated with the command. The interpretation
+    /// depends on the command type.
+    int value = 0;
     /// If this field is a non-empty string, it contains the raw, unparsed
     /// representation of the command type used for parsing (without the integer
     /// value). Note that there is no warranty that this field is actually populated,
     /// even if this command was parsed from a string.
     std::string raw_type;
-    /// An arbitrary, unchecked integer value associated with the command. The interpretation
-    /// depends on the command type.
-    int value = 0;
 
     Command(CommandType type, int value = 0, const std::string &raw_type = "");
 

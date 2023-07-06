@@ -1,128 +1,60 @@
 #include "Socket.hpp"
 
 #include <arpa/inet.h> //inet_addr
-#include <fcntl.h>
 #include <sys/socket.h>
 #include <unistd.h> //close
+#include <fcntl.h>
 
-#define QUIT_STR "QUIT"
+Socket::Socket() {
+    _inner = check(::socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK, 0));
 
-RemoteGamepadSocket::RemoteGamepadSocket(int socket) : _socket(socket) {
-    int flags = fcntl(_socket, F_GETFL);
-    try_opt(fcntl(_socket, F_SETFL, flags | O_NONBLOCK),
-            "activate non-blocking mode");
-}
-
-RemoteGamepadSocket::~RemoteGamepadSocket() {
-    if (_socket > -1) {
-        write(_socket, QUIT_STR, strlen(QUIT_STR));
-        write(_socket, "\n", 1);
-
-        close(_socket);
-    }
-}
-
-const std::optional<const Command>
-RemoteGamepadSocket::next_buffered_command(size_t start_pos) {
-    size_t i = _buffer.find('\n', start_pos);
-    if (i == std::string::npos) {
-        return std::optional<const Command>();
-    }
-    std::string cmd = _buffer.substr(0, i);
-    _buffer = _buffer.substr(i + 1);
-    return std::optional(Command::parse(cmd));
-}
-
-const std::optional<const Command> RemoteGamepadSocket::next_command() {
-    if (_buffer.length() >= MAX_BUFFER_SIZE) {
-        throw IOException(EOVERFLOW);
-    }
-    std::optional<const Command> buffered = next_buffered_command();
-    if (buffered.has_value()) {
-        return buffered;
-    }
-
-    char buffer[MAX_BUFFER_SIZE];
-    ssize_t r = read(_socket, buffer, MAX_BUFFER_SIZE - _buffer.length());
-    if (r == 0 || (r == -1 && (errno == EWOULDBLOCK || errno == EAGAIN))) {
-        return std::optional<const Command>();
-    }
-    check(r);
-
-    int prev_length = _buffer.length();
-    _buffer.append(buffer, r);
-    return next_buffered_command(prev_length);
-}
-
-GamepadServer::GamepadServer(int listening_port) {
-    sockaddr_in addr = {0};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(listening_port);
-
-    _socket = check(socket(PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0));
     int value = 1;
-    try_opt(
-        setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)),
-        "set reuseaddr");
+    try_opt(::setsockopt(_inner, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)), "set reuseaddr");
 
-    check(bind(_socket, (sockaddr *)&addr, sizeof(addr)));
-    check(listen(_socket, 1));
+    value = 0;
+    try_opt(::setsockopt(_inner, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof(value)),
+            "disable ipv6 only");
 }
 
-GamepadServer::~GamepadServer() {
-    if (_socket > -1) {
-        try_opt(close(_socket), "close socket");
-    }
+Socket::Socket(int fd) : _inner(fd) {
+    int flags = fcntl(_inner, F_GETFL);
+    try_opt(fcntl(_inner, F_SETFL, flags | O_NONBLOCK), "activate non-blocking mode");
 }
 
-bool GamepadServer::accept_client() {
-    sockaddr_in addr = {0};
-    socklen_t socklen = sizeof(addr);
+void Socket::close() { ::close(_inner); }
 
-    int client = accept4(_socket, (sockaddr *)&addr, &socklen, SOCK_NONBLOCK);
-    if (client == -1 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
-        return false;
+void Socket::bind(const SockAddr &addr) { check(::bind(_inner, addr.raw(), addr.size())); }
+void Socket::listen(int queue_size) { check(::listen(_inner, queue_size)); }
+std::optional<SocketWithAddress> Socket::accept() {
+    SockAddr addr(AF_INET6, 0);
+    socklen_t socklen = addr.size();
+
+    int client = ::accept4(_inner, addr.raw_mut(), &socklen, SOCK_NONBLOCK);
+    if (client == -1 && errno == EWOULDBLOCK) {
+        return std::optional<SocketWithAddress>();
     }
     check(client);
-    std::cout << "Remote gamepad connected: " << inet_ntoa(addr.sin_addr)
-              << " on port " << htons(addr.sin_port) << "\n";
+    return std::optional<SocketWithAddress>({client, addr});
+}
 
-    _client.emplace(client);
-    time(&last_activity);
-
+bool Socket::connect(const SockAddr &addr) {
+    int r = ::connect(_inner, addr.raw(), addr.size());
+     if (r == -1 && (errno == EINPROGRESS || errno == EALREADY || errno == EWOULDBLOCK)) {
+        return false;
+    }
+    check(r);
     return true;
 }
 
-void GamepadServer::dismiss_client() {
-    _client.reset();
-    _client_ready = false;
-    std::cout << "Remote gamepad disconnected\n";
+void Socket::send(const std::string &data) {
+    check(write(_inner, data.c_str(), data.size()));
 }
 
-const std::optional<const Command> GamepadServer::next_command() {
-    if (!_client.has_value() && !accept_client()) {
-        return std::optional<const Command>();
-    }
-    try {
-        auto cmd = _client->next_command();   
-        if (cmd.has_value()) {
-            time(&last_activity);
 
-            if (cmd->raw_type == "READY") {
-                if (!_client_ready) {
-                    _client_ready = true;
-                    std::cout << "--Remote gamepad READY to send commands--\n";
-                }
-            } else if (cmd->raw_type == QUIT_STR) {
-                dismiss_client();
-            } else {
-                return cmd;
-            }
-        } else if(time(NULL) - last_activity > CLIENT_TIMEOUT) {                 
-            dismiss_client();        
-        }
-    } catch (IOException &ex) {
-        dismiss_client();
+size_t Socket::receive(char *buffer, int max_len) {  
+    size_t r = check(read(_inner, buffer, max_len));
+    if (r == 0) {
+        throw IOException(ENODATA);
     }
-    return std::optional<const Command>();
+    return r;
 }

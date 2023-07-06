@@ -1,8 +1,8 @@
 #ifndef _JOYSTICK_HPP_
 #define _JOYSTICK_HPP_
 
-#include "Fallible.hpp"
 #include "Command.hpp"
+#include "Fallible.hpp"
 
 #include <exception>
 #include <string> //strcpy, strerror
@@ -16,7 +16,7 @@ class VirtualGamePad : Fallible {
     std::string _event_file;
 
     std::string parseEventFile() const;
-    /// Emits a single input event for this virtual device. 
+    /// Emits a single input event for this virtual device.
     inline void emit(int type, int code, int val);
     /// Emits a 'SYN' event to report an update caused by a previous input event.
     inline void report_sync();
@@ -39,7 +39,6 @@ class VirtualGamePad : Fallible {
     /// Processes a command, possibly causing the virtual device to emit gamepad input events.
     /// If the event is invalid or unsupported, it is ignored and no exception is thrown.
     void process_command(const Command &command);
-
 };
 
 #endif

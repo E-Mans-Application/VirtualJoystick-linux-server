@@ -29,13 +29,11 @@ class Fallible {
     /// instead of throwing if the operation has failed.
     /// @return result, in any case
     /// @see check
-    inline int try_opt(int result, const char *message,
-                       int err_value = -1) const noexcept {
+    inline int try_opt(int result, const char *message, int err_value = -1) const noexcept {
         try {
             return check(result, err_value);
         } catch (IOException &ex) {
-            std::cout << "WARNING: " << message << " failed: " << ex.what()
-                      << "\n";
+            std::cout << "WARNING: " << message << " failed: " << ex.what() << "\n";
             return err_value;
         }
     }

@@ -1,9 +1,10 @@
+#include "CommandLineParser.hpp"
 #include "Gamepad.hpp"
 #include "Socket.hpp"
-#include "CommandLineParser.hpp"
 
 #include <iostream>
 #include <signal.h>
+#include <memory> // unique_ptr
 
 bool running = true;
 
@@ -16,21 +17,33 @@ int main(int argc, char *argv[]) {
     parser.parse(argc, argv);
 
     VirtualGamePad gamePad;
-    std::cout << "Created virtual device " << gamePad.getRawDeviceName()
-              << "\nBound to /dev/input/" << gamePad.getEventFile()
-              << "\n";
-    
-    int port = parser.optValue("port", 58324);
-    GamepadServer server(port);
-    std::cout << "Server waiting for connection on TCP port " << port << "\n";
+    std::cout << "Created virtual device " << gamePad.getRawDeviceName() << "\nBound to /dev/input/"
+              << gamePad.getEventFile() << "\n";
 
+    GamepadDelegate *receiver;
+
+    // TODO: define DEFAULT_PORT or replace with the actual default port.
+    int port = parser.optValue("--port", DEFAULT_PORT);
+    bool delegate = parser.isSet("--delegate");
+    bool bind = parser.isSet("--bind");
+    
+    if (delegate) {
+        // TODO: define DEFAULT_DELEGATE_SERVER or replace with the actual default
+        // server, or parser.getValue("--delegate").
+        std::string delegate_server = parser.optValue<std::string>("--ping", DEFAULT_DELEGATE_SERVER);
+        receiver = new GamepadClient(delegate_server, bind, port);
+    } else {
+        receiver = new GamepadServer(port);
+        std::cout << "Server waiting for connection on TCP port " << port << "\n";
+    } 
+   
     std::cout << "Press 'Ctrl + C' to remove virtual device and exit\n";
 
     while (running) {
-      auto cmd = server.next_command();
-      if (cmd.has_value()) {
-        gamePad.process_command(*cmd);
-      }
+        auto cmd = receiver->next_command();
+        if (cmd.has_value()) {
+            gamePad.process_command(*cmd);
+        }
     }
 
     std::cout << "\nExiting...\n";
