@@ -54,18 +54,18 @@ SockAddr::SockAddr(sa_family_t protocol, uint16_t port) {
     port_raw() = htons(port);
 }
 
-constexpr inline sockaddr_in *SockAddr::get_v4() { return (sockaddr_in *)_raw; }
-constexpr inline sockaddr_in6 *SockAddr::get_v6() { return (sockaddr_in6 *)_raw; }
+inline sockaddr_in *SockAddr::get_v4() { return (sockaddr_in *)_raw; }
+inline sockaddr_in6 *SockAddr::get_v6() { return (sockaddr_in6 *)_raw; }
 
-constexpr inline sa_family_t &SockAddr::protocol_raw() { return *(sa_family_t *)_raw; }
-constexpr inline uint16_t &SockAddr::port_raw() {
+inline sa_family_t &SockAddr::protocol_raw() { return *(sa_family_t *)_raw; }
+inline uint16_t &SockAddr::port_raw() {
     return protocol() == AF_INET ? get_v4()->sin_port : get_v6()->sin6_port;
 }
-constexpr inline void *SockAddr::in_addr_raw() {
+inline void *SockAddr::in_addr_raw() {
     return protocol() == AF_INET ? (void *)&get_v4()->sin_addr : (void *)&get_v6()->sin6_addr;
 };
 
-constexpr sa_family_t SockAddr::protocol() const {
+sa_family_t SockAddr::protocol() const {
     return const_cast<SockAddr *>(this)->protocol_raw();
 }
 

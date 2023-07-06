@@ -34,7 +34,7 @@ const std::optional<const Command> RemoteGamepadSocket::next_command() {
         int prev_length = _buffer.length();
         _buffer.append(buffer, r);
         return next_buffered_command(prev_length);
-    } catch (IOException e) {
+    } catch (IOException &e) {
         if (errno == EWOULDBLOCK || errno == ENODATA) {
             return std::optional<const Command>();
         } else {

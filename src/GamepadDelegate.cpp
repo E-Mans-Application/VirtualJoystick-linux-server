@@ -84,7 +84,7 @@ bool GamepadClient::connect_to_delegate() {
             std::cout << "Connected to server.\n";
             return true;
         }
-    } catch (IOException e) {
+    } catch (IOException &e) {
         dismiss_delegate();
         if (time(NULL) - _last_activity > CLIENT_TIMEOUT) {
             time(&_last_activity);
